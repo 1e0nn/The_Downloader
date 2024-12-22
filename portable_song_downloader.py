@@ -313,7 +313,8 @@ def open_settings():
                 encrypted_data[var_name] = var_value
                 #vérifier si juste playlist_yt dans clechiffre
 
-                if not ((len(brute_clechiffre) == 2 and "playlist_yt" in brute_clechiffre and "download_path" in brute_clechiffre) or (len(brute_clechiffre) == 1 and "playlist_yt" in brute_clechiffre)):
+                if not ((len(brute_clechiffre) == 2 and "playlist_yt" in brute_clechiffre and "download_path" in brute_clechiffre) or (len(brute_clechiffre) == 0)):
+                    #print(brute_clechiffre)
                     answer = messagebox.askyesno("Confirmation", "Voulez-vous déchiffrer le reste des données existantes?")
                     if answer:
                         password_for_settings()
@@ -521,7 +522,7 @@ def decrypt(password=None,clechiffre_from_settings=None):
             else:
                 clechiffre[var_name] = data
         else:           
-            print(clechiffre)  
+            #print(clechiffre)  
             #exit()
             # loaded_nonce = decode_base64(data["nonce"])
             #loaded_salt = decode_base64(data["salt"])
@@ -557,7 +558,7 @@ def decrypt(password=None,clechiffre_from_settings=None):
         log_print("Decryption process completed.", F, True)
         unlock_program()
         #print(keys_var)
-        print(clechiffre)
+        #print(clechiffre)
         return clechiffre
     else:
         log_print("No data decrypted.", I, False)
@@ -712,8 +713,8 @@ def find_main_dir():
                     supposed_main_dir = brute_clechiffre['download_path']
                     if not supposed_main_dir:
                         log_print(f"Download path not found.", I, True)
-                        messagebox.showinfo("Information",f"No download path found, please choose one in setting.")
-                        return "settings",data_json,back_path,conf_folder  
+                        #messagebox.showinfo("Information",f"No download path found, please choose one in setting.")
+                        return "No download path found, please choose one in setting.",data_json,back_path,conf_folder  
                     if os.path.exists(supposed_main_dir):
                         main_dir = supposed_main_dir
                         log_print(f"Download path found: {main_dir}", F, True)
@@ -726,7 +727,7 @@ def find_main_dir():
                             log_print(f"The download path saved is not existing.", I, True)
                             answer = messagebox.askyesno("Confirmation", f"The download path saved is not existing:\n'{supposed_main_dir}'\n Do you want to choose a new one ?")
                             if answer:
-                                return  "settings",data_json,back_path,conf_folder 
+                                return  "Please enter a new Path in the settings",data_json,back_path,conf_folder 
                             else:
                                 main_dir = supposed_main_dir
                                 os.mkdir(main_dir)
@@ -734,15 +735,15 @@ def find_main_dir():
                         log_print(f"Updated download path: {main_dir}", F, True)
                 else :
                     log_print(f"No download path found", I, True)
-                    messagebox.showinfo("Information",f"No download path found, please choose one in setting.")
-                    return  "settings",data_json,back_path,conf_folder 
+                    #messagebox.showinfo("Information",f"No download path found, please choose one in setting.")
+                    return  "No download path found, please choose one in setting.",data_json,back_path,conf_folder 
 
         except Exception as e:
             log_print(f"Error while reading data.json: \n{e}", A, False)
     else:
         log_print(f"No download path found", I, True)
-        messagebox.showinfo("Information",f"No download path found, please choose one in setting.")
-        return "settings",data_json,back_path,conf_folder 
+        #messagebox.showinfo("Information",f"No download path found, please choose one in setting.")
+        return "No download path found, please choose one in setting.",data_json,back_path,conf_folder 
 
 
     return main_dir,data_json,back_path,conf_folder                  
@@ -1300,20 +1301,31 @@ if __name__ == '__main__':
     root = tk.Tk()
 
     #Si rien go settings
-    if supposed_main_dir == "settings":
+    # if supposed_main_dir == "settings":
+    #     main_dir=""
+    #     open_settings()
+    # else:
+    #     main_dir = supposed_main_dir
+
+    #Si data.json vide message
+    if not brute_clechiffre :
+        messagebox.showinfo("Information", "data.json is empty, please choose a download path in settings and at least one download solution.")
         main_dir=""
         open_settings()
+    #Si juste path go setting avec message
+    elif len(brute_clechiffre) == 1 and "download_path" in brute_clechiffre:
+        main_dir = supposed_main_dir
+        open_settings()
+        messagebox.showinfo("Information", "data.json hasn't any download solutions saved please enter at least one download solution.")
+    #Si juste pas de path go settings
+    elif not os.path.exists(supposed_main_dir):
+        main_dir=""
+        open_settings()
+        messagebox.showinfo("Information", supposed_main_dir)
+    #Si tout est ok
     else:
         main_dir = supposed_main_dir
 
-    if not brute_clechiffre :
-        messagebox.showinfo("Information", "data.json is empty, please choose a download path in settings and at least one download solution.")
-
-    #Si juste path go setting avec message
-    if len(brute_clechiffre) == 1 and "download_path" in brute_clechiffre:
-        open_settings()
-        messagebox.showinfo("Information", "data.json hasn't any download solutions saved please enter at least one download solution.")
-    
         
     root.title("Musique Downloader")
     root.geometry("850x200")
@@ -1334,6 +1346,19 @@ if __name__ == '__main__':
         # Bouton pour déverrouiller les clés de chiffrement
         button_unlock = ttk.Button(root, text="Déverrouiller", command=decrypt, style="TButton")
         button_unlock.grid(row=1, column=0, padx=300, pady=10, sticky="ew")
+
+        # Télécharger l'icône des paramètres si elle n'existe pas déjà
+        if not os.path.exists(os.path.join(conf_folder, "settings.png")):
+            
+            # Télécharger l'image et l'enregistrer dans conf_folder
+            url = "https://cdn-icons-png.flaticon.com/512/503/503849.png"
+            response = requests.get(url, stream=True)
+            if response.status_code == 200:
+                with open(os.path.join(conf_folder, "settings.png"), 'wb') as out_file:
+                    shutil.copyfileobj(response.raw, out_file)
+                log_print("Settings icon downloaded successfully.", F, True)
+            else:
+                log_print("Failed to download settings icon.", A, True)
 
         # Redimensionner l'image de l'icône et ajouter un bouton dynamique
         settings_image = Image.open(os.path.join(conf_folder, "settings.png"))
