@@ -48,23 +48,29 @@ def unlock_program():
     except:
         pass
 
-    root.geometry("850x300")
-    # Affichage des autres éléments
+    if main_dir and (all(key in clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']) or all(key in clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']) or 'playlist_yt' in clechiffre):
+        label_message.config(text="", fg="white")
 
-    #véirifer sir les champs existes 
-    if all(key in clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']):
-        checkbox1.grid(row=0, column=0, padx=20, pady=10, sticky="w")
+        root.geometry("850x300")
+        # Affichage des autres éléments
 
-    if all(key in clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']):
-        checkbox2.grid(row=1, column=0, padx=20, pady=10, sticky="w")
+        #véirifer sir les champs existes 
+        if all(key in clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']):
+            checkbox1.grid(row=0, column=0, padx=20, pady=10, sticky="w")
 
-    if 'playlist_yt' in clechiffre:
-        checkbox3.grid(row=2, column=0, padx=20, pady=10, sticky="w")
+        if all(key in clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']):
+            checkbox2.grid(row=1, column=0, padx=20, pady=10, sticky="w")
 
-    if all(key in clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']) or all(key in clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']) or 'playlist_yt' in clechiffre:
-        button_start.grid(row=3, column=0, padx=20, pady=15, sticky="ew")
+        if 'playlist_yt' in clechiffre:
+            checkbox3.grid(row=2, column=0, padx=20, pady=10, sticky="w")
+
+        if all(key in clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']) or all(key in clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']) or 'playlist_yt' in clechiffre:
+            button_start.grid(row=3, column=0, padx=20, pady=15, sticky="ew")
+            label_message.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
+            frame_download_info.grid(row=5, column=0, padx=100, pady=15, sticky="nsew")
+    else:
+        label_message.config(text="Attente de configuration des paramètres.", fg="white")
         label_message.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
-        frame_download_info.grid(row=5, column=0, padx=100, pady=15, sticky="nsew")
 
 # Fonction pour afficher la fenêtre de paramètres
 def open_settings():
@@ -159,7 +165,10 @@ def open_settings():
 
     tk.Label(settings_window, text="YouTube Playlist Link:", bg="#2f2f2f", fg="white").grid(row=12, column=0, pady=5, sticky="w", padx=10)
     entry_yt_link = tk.Entry(settings_window)
-    entry_yt_link.insert(0, '')
+    if 'playlist_yt' in brute_clechiffre:
+        entry_yt_link.insert(0, brute_clechiffre['playlist_yt'])
+    else:
+        entry_yt_link.insert(0, '')
     entry_yt_link.grid(row=12, column=1, pady=5, sticky="ew", padx=10)
 
     error_yt_link = tk.Label(settings_window, text="Ce champ est requis", bg="#2f2f2f", fg="red")
@@ -276,14 +285,14 @@ def open_settings():
 
         # Si tout est valide, fermer la fenêtre et appliquer les changements
 
+        if not os.path.exists(path):
+            os.mkdir(path)
+        
+        log_print(f"Le dossier de téléchargment a été mis à jour: {os.path.abspath(path)}", F, True)
 
-        main_dir = path
+        main_dir = os.path.abspath(path)
 
         encrypted_data["download_path"] = main_dir
-
-        if not os.path.exists(main_dir):
-            os.mkdir(main_dir)
-
 
         if any(key in clechiffre for key in ["email_dz", "password_dz", "client_id_sc", "auth_token_sc"]): # check if any of the keys are in the dictionary
 
@@ -313,7 +322,7 @@ def open_settings():
                 encrypted_data[var_name] = var_value
                 #vérifier si juste playlist_yt dans clechiffre
 
-                if not ((len(brute_clechiffre) == 2 and "playlist_yt" in brute_clechiffre and "download_path" in brute_clechiffre) or (len(brute_clechiffre) == 0)):
+                if not ((len(brute_clechiffre) == 2 and "playlist_yt" in brute_clechiffre and "download_path" in brute_clechiffre) or (len(brute_clechiffre) == 0) or (len(brute_clechiffre) == 1 and "playlist_yt" in brute_clechiffre)):
                     #print(brute_clechiffre)
                     answer = messagebox.askyesno("Confirmation", "Voulez-vous déchiffrer le reste des données existantes?")
                     if answer:
@@ -1326,7 +1335,6 @@ if __name__ == '__main__':
     else:
         main_dir = supposed_main_dir
 
-        
     root.title("Musique Downloader")
     root.geometry("850x200")
     root.configure(bg="#2f2f2f")  # Fond gris foncé
