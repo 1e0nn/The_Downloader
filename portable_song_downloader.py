@@ -851,7 +851,7 @@ def login_deezer(email, password):
                     sleep(0.5)
                     solve_audio_captcha(browser,model)
                     log_print('Captcha solved', F, True)
-                    sleep(1)
+                    sleep(random_delay())
                     cookie = good()
                     if cookie:
                         return cookie
@@ -904,7 +904,7 @@ def retrieve_id_and_title(id):
             log_print(f"Already Downloaded Tracks: \n{ti_aldl}", I,False)
 
         if len(sng_ids) > 0:
-            log_print(f"{len(sng_ids)} tracks will be downloaded.", F)
+            log_print(f"{len(sng_ids)} tracks will be downloaded.", I, True)
             # Print the results
             # print("SNG_IDs:", sng_ids)
             # print("SNG_TITLEs:", sng_titles)
