@@ -94,11 +94,7 @@ function Download-Repo {
             Remove-Item -Path $ExtractPath -Recurse -Force
         }
 
-        # Déplace scdl.exe de dependencies vers TempFolderPath
-        #$scdlSourcePath = Join-Path -Path $Dependencies -ChildPath "scdl.exe"
-        #$scdlDestinationPath = Join-Path -Path $TempFolderPath -ChildPath "scdl.exe"
-        #Move-Item -Path $scdlSourcePath -Destination $scdlDestinationPath -Force
-        #Write-Host "scdl.exe a été déplacé vers $TempFolderPath" -ForegroundColor Green
+
 
         Write-Host "L'archive a bien été téléchargé." -ForegroundColor Green
 
@@ -108,6 +104,19 @@ function Download-Repo {
         Install-VCRedist
         Refresh-Environment
         Install-Requirements -requirementsFile $requirementsFile
+
+        # Déplace scdl.exe de dependencies vers TempFolderPath
+        $scdlSourcePath = Get-ChildItem -Path "C:\Program Files\Python*" -Recurse -Filter "scdl.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+
+        if ($scdlSourcePath) {
+            $scdlDestinationPath = Join-Path -Path $TempFolderPath -ChildPath "scdl.exe"
+            write-host $scdlSourcePath.FullName
+            Copy-Item -Path $scdlSourcePath.FullName -Destination $scdlDestinationPath -Force
+            Write-Host "scdl.exe a été copié vers $TempFolderPath" -ForegroundColor Green
+        } else {
+            Write-Host "scdl.exe n'a pas été trouvé dans les répertoires Python." -ForegroundColor Red
+            exit 12
+        }
 
     }
 }    
