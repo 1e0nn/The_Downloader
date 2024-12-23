@@ -110,7 +110,7 @@ function Download-Repo {
 
         if ($scdlSourcePath) {
             $scdlDestinationPath = Join-Path -Path $TempFolderPath -ChildPath "scdl.exe"
-            write-host $scdlSourcePath.FullName
+            #write-host $scdlSourcePath.FullName
             Copy-Item -Path $scdlSourcePath.FullName -Destination $scdlDestinationPath -Force
             Write-Host "scdl.exe a été copié vers $TempFolderPath" -ForegroundColor Green
         } else {
