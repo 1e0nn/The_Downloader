@@ -50,8 +50,8 @@ def unlock_program():
 
     if main_dir and (all(key in clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']) or all(key in clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']) or 'playlist_yt' in clechiffre):
         label_message.config(text="", fg="white")
-
         root.geometry("850x300")
+        root.deiconify()
         # Affichage des autres éléments
 
         #véirifer sir les champs existes 
@@ -69,6 +69,7 @@ def unlock_program():
             label_message.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
             frame_download_info.grid(row=5, column=0, padx=100, pady=15, sticky="nsew")
     else:
+        root.iconify()
         label_message.config(text="Attente de configuration des paramètres.", fg="white")
         label_message.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
 
@@ -322,7 +323,7 @@ def open_settings():
                 encrypted_data[var_name] = var_value
                 #vérifier si juste playlist_yt dans clechiffre
 
-                if not ((len(brute_clechiffre) == 2 and "playlist_yt" in brute_clechiffre and "download_path" in brute_clechiffre) or (len(brute_clechiffre) == 0) or (len(brute_clechiffre) == 1 and "playlist_yt" in brute_clechiffre)):
+                if not ((len(brute_clechiffre) == 2 and "playlist_yt" in brute_clechiffre and "download_path" in brute_clechiffre) or (len(brute_clechiffre) == 0) or (len(brute_clechiffre) == 1 and "playlist_yt" in brute_clechiffre) or (len(brute_clechiffre) == 1 and "download_path" in brute_clechiffre)):
                     #print(brute_clechiffre)
                     answer = messagebox.askyesno("Confirmation", "Voulez-vous déchiffrer le reste des données existantes?")
                     if answer:
@@ -334,6 +335,7 @@ def open_settings():
         settings_window.destroy()
         save_encryption_data(data_json, encrypted_data,rewrite)
         messagebox.showinfo("Succès", "Les paramètres ont été mis à jour.")
+        root.deiconify()
         unlock_program()
 
     save_button = ttk.Button(settings_window, text="Sauvegarder", command=save_changes)
@@ -1318,17 +1320,26 @@ if __name__ == '__main__':
 
     #Si data.json vide message
     if not brute_clechiffre :
+        root.iconify()
         messagebox.showinfo("Information", "data.json is empty, please choose a download path in settings and at least one download solution.")
         main_dir=""
         open_settings()
     #Si juste path go setting avec message
     elif len(brute_clechiffre) == 1 and "download_path" in brute_clechiffre:
-        main_dir = supposed_main_dir
-        open_settings()
-        messagebox.showinfo("Information", "data.json hasn't any download solutions saved please enter at least one download solution.")
+        if not os.path.exists(supposed_main_dir):
+            root.iconify()
+            main_dir=""
+            open_settings()
+            messagebox.showinfo("Information", "data.json hasn't any download solutions saved please enter at least one download solution.")
+        else:
+            main_dir = supposed_main_dir
+            root.iconify()
+            open_settings()
+            messagebox.showinfo("Information", "data.json hasn't any download solutions saved please enter at least one download solution.")
     #Si juste pas de path go settings
     elif not os.path.exists(supposed_main_dir):
         main_dir=""
+        root.iconify()
         open_settings()
         messagebox.showinfo("Information", supposed_main_dir)
     #Si tout est ok
