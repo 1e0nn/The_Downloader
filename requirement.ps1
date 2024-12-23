@@ -37,11 +37,11 @@ function Install-Python {
         }
     }
 
-    $pythonInstallerUrl = "https://www.python.org/ftp/python/3.9.7/python-3.9.7-amd64.exe"
+    $pythonInstallerUrl = "https://www.python.org/ftp/python/3.11.0/python-3.11.0-amd64.exe"
     $installerPath = "$TempFolderPath\python-installer.exe"
 
     try {
-        Write-Host "Installing Python 3.9.7..." -ForegroundColor Yellow
+        Write-Host "Installing Python 3.11.0..." -ForegroundColor Yellow
         Invoke-WebRequest -Uri $pythonInstallerUrl -OutFile $installerPath
         Start-Process -FilePath $installerPath -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1" -Wait
         Remove-Item -Path $installerPath
