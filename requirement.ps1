@@ -95,9 +95,9 @@ function Download-Repo {
         }
 
         # Déplace scdl.exe de dependencies vers TempFolderPath
-        $scdlSourcePath = Join-Path -Path $Dependencies -ChildPath "scdl.exe"
-        $scdlDestinationPath = Join-Path -Path $TempFolderPath -ChildPath "scdl.exe"
-        Move-Item -Path $scdlSourcePath -Destination $scdlDestinationPath -Force
+        #$scdlSourcePath = Join-Path -Path $Dependencies -ChildPath "scdl.exe"
+        #$scdlDestinationPath = Join-Path -Path $TempFolderPath -ChildPath "scdl.exe"
+        #Move-Item -Path $scdlSourcePath -Destination $scdlDestinationPath -Force
         #Write-Host "scdl.exe a été déplacé vers $TempFolderPath" -ForegroundColor Green
 
         Write-Host "L'archive a bien été téléchargé." -ForegroundColor Green
