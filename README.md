@@ -16,7 +16,7 @@
 
 3. **Placer le Script :**
 
-   Placez le fichier téléchargé `requirement.ps1` à l'emplacement où vous souhaitez exécuter votre programme.
+   Placez le fichier téléchargé `requirement.ps1` à l'emplacement où vous souhaitez exécuter votre programme `the_downloader.pyw`.
 
 4. **Ouvrir PowerShell et Exécuter le Script :**
 
