@@ -283,7 +283,8 @@ def open_settings():
             champ_a_remplir.append("deezer")
             # print("Champs Deezer incomplets.")
         
-        if (mail_soundcloud and not password_soundcloud) or (password_soundcloud and not mail_soundcloud) or (mail_soundcloud and not soundcloud_link) or (soundcloud_link and not mail_soundcloud) and not skip_checking:
+        #if (mail_soundcloud and not password_soundcloud) or (password_soundcloud and not mail_soundcloud) or (mail_soundcloud and not soundcloud_link) or (soundcloud_link and not mail_soundcloud) and not skip_checking:
+        if (mail_soundcloud and not password_soundcloud) or (password_soundcloud and not mail_soundcloud) or (mail_soundcloud and not soundcloud_link) or (soundcloud_link and not mail_soundcloud) or (password_soundcloud and not soundcloud_link) or (soundcloud_link and not password_soundcloud) and not skip_checking:
             champ_a_remplir.append("soundcloud")
             # print("Champs SoundCloud incomplets.")
 
