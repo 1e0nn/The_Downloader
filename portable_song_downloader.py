@@ -42,23 +42,26 @@ from cryptography.hazmat.backends import default_backend
 def unlock_program():
     # Suppression du champ mot de passe et du bouton de déverrouillage
     try:
-        entry_password.grid_forget()
-        button_unlock.grid_forget()
-        settings_button.place_forget()
+        for widget in root.grid_slaves():
+            if widget != settings_button:
+                widget.grid_forget()
     except:
         pass
-
+    
     if main_dir and (all(key in clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']) or all(key in clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']) or 'playlist_yt' in clechiffre):
         label_message.config(text="", fg="white")
         root.geometry("850x300")
         root.deiconify()
         # Affichage des autres éléments
+        #print(clechiffre)
 
         #véirifer sir les champs existes 
         if all(key in clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']):
+            unlocked["session"] = True
             checkbox1.grid(row=0, column=0, padx=20, pady=10, sticky="w")
 
         if all(key in clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']):
+            unlocked["session"] = True
             checkbox2.grid(row=1, column=0, padx=20, pady=10, sticky="w")
 
         if 'playlist_yt' in clechiffre:
@@ -166,7 +169,7 @@ def open_settings():
 
     tk.Label(settings_window, text="YouTube Playlist Link:", bg="#2f2f2f", fg="white").grid(row=12, column=0, pady=5, sticky="w", padx=10)
     entry_yt_link = tk.Entry(settings_window)
-    if 'playlist_yt' in brute_clechiffre:
+    if 'youtube' in data_found_saved:
         entry_yt_link.insert(0, brute_clechiffre['playlist_yt'])
     else:
         entry_yt_link.insert(0, '')
@@ -184,8 +187,9 @@ def open_settings():
 
     # Case à cocher pour mettre à jour les données enregistrées
     update_data_var = tk.BooleanVar()
-    update_data_checkbox = tk.Checkbutton(settings_window, text="Enregistrer seulement les variables rentrées.", variable=update_data_var, bg="#2f2f2f", fg="white", selectcolor="#2f2f2f")
+    update_data_checkbox = tk.Checkbutton(settings_window, text="Enregistrer que ce qui a été rentré \n(les anciennes données seront écrasés).", variable=update_data_var, bg="#2f2f2f", fg="white", selectcolor="#2f2f2f")
     update_data_checkbox.grid(row=16, column=0, columnspan=2, pady=5, sticky="w", padx=10)
+    #print(update_data_var.get())
 
     # Bouton pour sauvegarder les changements
     def save_changes():
@@ -199,48 +203,70 @@ def open_settings():
         yt_link = entry_yt_link.get().strip()
         path = entry_path.get().strip()
         rewrite = update_data_var.get()
+        check_password = None
+        champ_a_remplir = []
+        skip_checking = False
 
         def password_for_settings():
-
             password_popup = tk.Toplevel(settings_window)
             password_popup.title("Mot de passe")
-            password_popup.geometry("300x150")
+            password_popup.geometry("500x150")
             password_popup.configure(bg="#2f2f2f")
 
-            tk.Label(password_popup, text="Entrez votre mot de passe:", bg="#2f2f2f", fg="white").pack(pady=10)
-            password_entry = tk.Entry(password_popup, show="*")
-            password_entry.pack(pady=5)
+            check_password = {"check_password": None}
 
             def submit_password(rewrite):
                 global password
                 password = password_entry.get().encode()
-                # print(rewrite)
-                # print(password)
-                # print(clechiffre)
-                if not all(key in brute_clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']) and not all(key in brute_clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']):
-                    rewrite = True
-                    # if password_popup.winfo_exists():
-                    #     password_popup.destroy()
-                    # return True
-                if not rewrite:
-                    if not decrypt(password,clechiffre):
+
+                if not any(solution in data_found_saved for solution in ["deezer", "soundcloud"]) and chanp_rempli_need_crypt:
+                    check_password["check_password"] = True
+                elif not rewrite:
+                    check_password["check_password"] = decrypt(password, clechiffre)
+                else:
+                    check_password["check_password"] = True
+                    if password_popup.winfo_exists():
+                        password_popup.destroy()
+                    return True
+
+                #Si case coché récrire que les data rentrées mais vérifier le mot de passe coreespond bien à celui des données déjà enregistrées
+                if not rewrite and any(solutions in data_found_saved for solutions in ["deezer", "soundcloud"]):
+                    if not check_password["check_password"]:
                         messagebox.showinfo("Error", "Le mot de passe ne correspond pas à celui des données déja enregistrées.")
                         password_entry.delete(0, tk.END)
                         password = None
                         return False
+                    else:
+                        if password_popup.winfo_exists():
+                            password_popup.destroy()
+                        return True
+                #en gros réecri toutes les données car consièdere qu'une seul solution de chiffrement existe
                 else:
                     if password_popup.winfo_exists():
                         password_popup.destroy()
                     return True
+            
+            #print(rewrite)
+            if not any(solution in data_found_saved for solution in ["deezer", "soundcloud"]) and chanp_rempli_need_crypt:
+                tk.Label(password_popup, text="Entrez votre mot de passe afin de chiffrer les données:", bg="#2f2f2f", fg="white").pack(pady=10)
+            elif not rewrite:
+                tk.Label(password_popup, text="Entrez votre mot de passe afin de vérifier si il corespond aux données déja chiffrés:", bg="#2f2f2f", fg="white").pack(pady=10)
+            else:
+                tk.Label(password_popup, text="Entrez votre mot de passe afin de chiffrer les données:", bg="#2f2f2f", fg="white").pack(pady=10)
+            password_entry = tk.Entry(password_popup, show="*")
+            password_entry.pack(pady=5)
+
             submit_button = ttk.Button(password_popup, text="Valider", command=lambda: submit_password(rewrite))
-            #submit_button = ttk.Button(password_popup, text="Valider", command=submit_password(rewrite))
             submit_button.pack(pady=10)
 
             password_popup.transient(settings_window)
             password_popup.grab_set()
             settings_window.wait_window(password_popup)
+            return check_password["check_password"]
 
-        champ_a_remplir = []
+        #CHECKING IF CRYPTED saved data existing
+        if 'deezer' in data_found_saved or 'soundcloud' in data_found_saved or 'youtube' in data_found_saved:
+            skip_checking = True
 
         # Validation
         if not path:
@@ -248,46 +274,63 @@ def open_settings():
             # print("Chemin de téléchargement vide.")            
         
         # Vérifier que les champs ne sont pas tous vides
-        if (not mail_deezer and not password_deezer and not playlist_id_deezer) and (not mail_soundcloud and not password_soundcloud and not soundcloud_link) and not yt_link:
+        if (not mail_deezer and not password_deezer and not playlist_id_deezer) and (not mail_soundcloud and not password_soundcloud and not soundcloud_link) and not yt_link and not skip_checking:
             champ_a_remplir.append("all")
             # print("Tous les champs sont vides.")
 
         # Vérifier que les champs sont remplis par paire
-        if (mail_deezer and not password_deezer) or (password_deezer and not mail_deezer) or (mail_deezer and not playlist_id_deezer) or (playlist_id_deezer and not mail_deezer) or (password_deezer and not playlist_id_deezer) or (playlist_id_deezer and not password_deezer):
+        if (mail_deezer and not password_deezer) or (password_deezer and not mail_deezer) or (mail_deezer and not playlist_id_deezer) or (playlist_id_deezer and not mail_deezer) or (password_deezer and not playlist_id_deezer) or (playlist_id_deezer and not password_deezer) and not skip_checking:
             champ_a_remplir.append("deezer")
             # print("Champs Deezer incomplets.")
         
-        if (mail_soundcloud and not password_soundcloud) or (password_soundcloud and not mail_soundcloud) or (mail_soundcloud and not soundcloud_link) or (soundcloud_link and not mail_soundcloud):
+        if (mail_soundcloud and not password_soundcloud) or (password_soundcloud and not mail_soundcloud) or (mail_soundcloud and not soundcloud_link) or (soundcloud_link and not mail_soundcloud) and not skip_checking:
             champ_a_remplir.append("soundcloud")
             # print("Champs SoundCloud incomplets.")
 
         update_error_labels(champ_a_remplir)
 
+        #si les champs sont vides quitte la fonction save car ne doit pas save les données
         if champ_a_remplir:
             return
         
+        #données à chiffrer
         encrypted_data = {}
+
+        #champs remplis qui nécessaite un chiffrement
+        chanp_rempli_need_crypt = {}
 
         
         if  mail_deezer and  password_deezer and  playlist_id_deezer:
+            chanp_rempli_need_crypt['deezer'] = True
             clechiffre['email_dz'] = mail_deezer
             clechiffre['password_dz'] = password_deezer
             clechiffre['playlist_id_deezer'] = playlist_id_deezer
             encrypted_data['playlist_id_deezer'] = playlist_id_deezer
+            brute_clechiffre['playlist_id_deezer'] = playlist_id_deezer
 
 
         if  mail_soundcloud and  password_soundcloud and  soundcloud_link:
+            chanp_rempli_need_crypt['soundcloud'] = True
             clechiffre['client_id_sc'] = mail_soundcloud
             clechiffre['auth_token_sc'] = password_soundcloud
-            clechiffre['soundcloud_link'] = soundcloud_link
+            clechiffre['soundcloud_link'] = password_soundcloud
+            encrypted_data['soundcloud_link'] = soundcloud_link
+            brute_clechiffre['soundcloud_link'] = soundcloud_link
 
         if  yt_link:
             clechiffre['playlist_yt'] = yt_link
+            brute_clechiffre['playlist_yt'] = yt_link
+            #encrypted_data['playlist_yt'] = yt_link
 
         # Si tout est valide, fermer la fenêtre et appliquer les changements
 
         if not os.path.exists(path):
-            os.mkdir(path)
+            try:
+                os.makedirs(path)
+            except:
+                log_print(f"Impossible de créer le répertoire: {path}",A,True)
+                messagebox.showerror("Erreur", "Impossible de créer le répertoire, veuillez vérifier ce dernier.")
+                return
         
         log_print(f"Le dossier de téléchargment a été mis à jour: {os.path.abspath(path)}", F, True)
 
@@ -295,43 +338,57 @@ def open_settings():
 
         encrypted_data["download_path"] = main_dir
 
-        if any(key in clechiffre for key in ["email_dz", "password_dz", "client_id_sc", "auth_token_sc"]): # check if any of the keys are in the dictionary
-
-            password_for_settings()        
+        if any(key in clechiffre for key in ["email_dz", "password_dz", "client_id_sc", "auth_token_sc"]) and chanp_rempli_need_crypt: # check if any of the keys are in the dictionary
+            check_password = password_for_settings()
 
         for var_name, var_value in clechiffre.copy().items():
-            if var_name in ["email_dz", "password_dz", "client_id_sc", "auth_token_sc"]:
+            if var_name in ["email_dz", "password_dz", "client_id_sc", "auth_token_sc"] and check_password and chanp_rempli_need_crypt:
                 
                 try:
-                    #salt = get_random_bytes(16)
-                    #encryption_key = derive_key_from_password(password, salt)
-                    #nonce, ciphertext, tag = encrypt_message(var_value, encryption_key)
                     encryption_key = derive_key_from_password(password)
                     ciphertext, iv , tag = encrypt_message(var_value, encryption_key)
+                    log_print(f"Encrypted {var_name} successfully.", F, True)
                 except Exception as e:
                     log_print(f"Error while encrypting: {e}", I, True)
                     return False
                 
                 encrypted_data[var_name] = {
-                    #"nonce": encode_base64(nonce),
                     "iv": encode_base64(iv),
-                    #"salt": encode_base64(salt),
                     "tag": encode_base64(tag),
                     "ciphertext": encode_base64(ciphertext),
                 }
+
             if var_name == "playlist_yt":
                 encrypted_data[var_name] = var_value
-                #vérifier si juste playlist_yt dans clechiffre
-
-                if not ((len(brute_clechiffre) == 2 and "playlist_yt" in brute_clechiffre and "download_path" in brute_clechiffre) or (len(brute_clechiffre) == 0) or (len(brute_clechiffre) == 1 and "playlist_yt" in brute_clechiffre) or (len(brute_clechiffre) == 1 and "download_path" in brute_clechiffre)):
-                    #print(brute_clechiffre)
+                #vérifier si juste playlist_yt dans clechiffre et si mot de passe pour les autres données déja rentée
+                #print(unlocked)
+                if ("deezer" in data_found_saved or "soundcloud" in data_found_saved) and check_password is None and not unlocked["session"]:
+                #     #Si non que YT Si 
                     answer = messagebox.askyesno("Confirmation", "Voulez-vous déchiffrer le reste des données existantes?")
                     if answer:
-                        password_for_settings()
-                        if not password:
-                            return
-                else :
-                    rewrite = True
+                        settings_window.destroy()
+                        save_encryption_data(data_json, encrypted_data,rewrite)
+                        messagebox.showinfo("Succès", "Les paramètres ont été mis à jour.")
+
+                        #taffer le rewrite
+
+                        try:
+                            for widget in root.grid_slaves():
+                                if widget != settings_button:
+                                    widget.grid_forget()
+                        except:
+                            pass
+                        #Entrée pour le mot de passe
+                        entry_password = ttk.Entry(root, show="*", font=("Helvetica", 18),)
+                        entry_password.grid(row=0, column=0, padx=200, pady=20, sticky="ew")
+                        #print(entry_password.get().encode())
+
+                        # Bouton pour déverrouiller les clés de chiffrement
+                        button_unlock = ttk.Button(root, text="Déverrouiller", command=lambda: decrypt(entry_password.get().encode()), style="TButton")
+                        button_unlock.grid(row=1, column=0, padx=300, pady=10, sticky="ew")
+
+                        return
+
         settings_window.destroy()
         save_encryption_data(data_json, encrypted_data,rewrite)
         messagebox.showinfo("Succès", "Les paramètres ont été mis à jour.")
@@ -344,9 +401,6 @@ def open_settings():
     # Assurer que les colonnes et lignes s'étendent
     settings_window.grid_columnconfigure(1, weight=1)
     settings_window.grid_rowconfigure(17, weight=1)
-
-
-
 
 def selection_streaming_source():
     global counter_finish, if_setting_empty_skip
@@ -477,44 +531,26 @@ def display_download_info(song_count_message, song_list):
 def decode_base64(encoded_data):
     return base64.b64decode(encoded_data.encode())
 
-# def derive_key_from_password(password, salt):
-#     # print("\n\x1b[93m[-] Deriving key from password...\x1b[0m")
-#     kdf = PBKDF2HMAC(
-#         algorithm=hashes.SHA256(),
-#         length=32,
-#         salt=salt,
-#         iterations=1000000,
-#         backend=default_backend()
-#     )
-#     return kdf.derive(password)
-
-# def decrypt_message(nonce, ciphertext, tag, key):
-#     # print("\x1b[93m[-] Decrypting identifiers...\x1b[0m")
-#     cipher = AES.new(key, AES.MODE_EAX, nonce=nonce)
-#     plaintext = cipher.decrypt(ciphertext)
-#     try:
-#         cipher.verify(tag)
-#         return plaintext.decode()
-#     except ValueError:
-#         return False
-    
 def decrypt_message(ciphertext, aes_key, iv, tag):
-    print("\x1b[93m[-] Decrypting identifiers...\x1b[0m")
+    #print("\x1b[93m[-] Decrypting identifiers...\x1b[0m")
     try:
         cipher = Cipher(algorithms.AES(aes_key), modes.GCM(iv, tag), backend=default_backend())
         decryptor = cipher.decryptor()
         decrypted_data = decryptor.update(ciphertext) + decryptor.finalize()
-        log_print("Fichier déchiffré avec succès.",F,True)
+        #log_print("Fichier déchiffré avec succès.",F,True)
         return decrypted_data.decode()
     except Exception as e:
         log_print(f"Fichier pas déchiffré:{e}",A,True)
         return False
 
 def decrypt(password=None,clechiffre_from_settings=None):
+    
+    #print(password)
 
     if not password:
         password = entry_password.get().encode()
 
+    #print(password)
     log_print("Decrypting identifiers...", I, True)
     #password = input("\n\x1b[93mEnter your password: \x1b[0m").encode()
 
@@ -580,16 +616,6 @@ def decrypt(password=None,clechiffre_from_settings=None):
 def encode_base64(data):
     return base64.b64encode(data).decode()
 
-# def derive_key_from_password(password, salt):
-#     kdf = PBKDF2HMAC(
-#         algorithm=hashes.SHA256(),
-#         length=32,
-#         salt=salt,
-#         iterations=1000000,
-#         backend=default_backend()
-#     )
-#     return kdf.derive(password)
-
 def derive_key_from_password(password):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -599,14 +625,6 @@ def derive_key_from_password(password):
         backend=default_backend()
     )
     return kdf.derive(password)
-
-# Fonction pour dériver une clé à partir d'un mot de passe
-
-# def encrypt_message(message, key):
-#     cipher = AES.new(key, AES.MODE_EAX)
-#     nonce = cipher.nonce
-#     ciphertext, tag = cipher.encrypt_and_digest(message.encode())
-#     return nonce, ciphertext, tag
 
 def encrypt_message(message, key):
     try:
@@ -628,11 +646,11 @@ def save_encryption_data(file_path, encrypted_data,rewrite=False):
         with open(file_path, 'w') as file:
             json.dump(existing_data, file)
         # print(existing_data)
-        log_print(f"Encrypted updated to the file: {file_path}", F, True)
+        log_print(f"Data updated to the file: {file_path}", F, True)
     else:
         with open(file_path, 'w') as file:
             json.dump(encrypted_data, file)
-        log_print(f"Encrypted data saved to the file: {file_path}", F, True)
+        log_print(f"Data saved to the file: {file_path}", F, True)
 
 # Fonction pour vérifier si le répertoire existe, sinon le créer
 def check_directory(path):
@@ -715,46 +733,43 @@ def find_main_dir():
     if os.path.exists(data_json):
         try:
             if os.stat(data_json).st_size == 0:
-                log_print(f"data.json is empty", I, True)
-                return "settings", data_json, back_path, conf_folder
-            with open(data_json, 'r') as file:
-                brute_clechiffre = json.load(file)
-                if 'download_path' in brute_clechiffre:
-                    
-                    supposed_main_dir = brute_clechiffre['download_path']
-                    if not supposed_main_dir:
-                        log_print(f"Download path not found.", I, True)
-                        #messagebox.showinfo("Information",f"No download path found, please choose one in setting.")
-                        return "No download path found, please choose one in setting.",data_json,back_path,conf_folder  
-                    if os.path.exists(supposed_main_dir):
-                        main_dir = supposed_main_dir
-                        log_print(f"Download path found: {main_dir}", F, True)
-                    else:
-                        supposed_main_dir = supposed_main_dir.replace(supposed_main_dir[:2], os.path.splitdrive(script_path)[0])
+                log_print(f"data.json is empty.", I, True)
+                return "Aucune donnée enregistré trouvé, veuillez rentrer un chemin de téléchargement ainsi qu'au moin une solution de téléchargement.", data_json, back_path, conf_folder
+            else:
+                with open(data_json, 'r') as file:
+                    brute_clechiffre = json.load(file)
+                    if 'download_path' in brute_clechiffre:
+                        
+                        supposed_main_dir = brute_clechiffre['download_path']
+                        if not supposed_main_dir:
+                            log_print(f"Download path not found.", I, True)
+                            return "No download path found, please choose one in setting.",data_json,back_path,conf_folder  
                         if os.path.exists(supposed_main_dir):
                             main_dir = supposed_main_dir
-                            log_print(f"Download path found in saved '{brute_clechiffre['download_path']}' but not existing instead a similar path existing '{supposed_main_dir}' chosing this path.", F, True)
+                            log_print(f"Download path found: {main_dir}", F, True)
                         else:
-                            log_print(f"The download path saved is not existing.", I, True)
-                            answer = messagebox.askyesno("Confirmation", f"The download path saved is not existing:\n'{supposed_main_dir}'\n Do you want to choose a new one ?")
-                            if answer:
-                                return  "Please enter a new Path in the settings",data_json,back_path,conf_folder 
-                            else:
+                            supposed_main_dir = supposed_main_dir.replace(supposed_main_dir[:2], os.path.splitdrive(script_path)[0])
+                            if os.path.exists(supposed_main_dir):
                                 main_dir = supposed_main_dir
-                                os.mkdir(main_dir)
-                        #main_dir = supposed_main_dir.replace('F:', os.path.splitdrive(script_path)[0])                      
-                        log_print(f"Updated download path: {main_dir}", F, True)
-                else :
-                    log_print(f"No download path found", I, True)
-                    #messagebox.showinfo("Information",f"No download path found, please choose one in setting.")
-                    return  "No download path found, please choose one in setting.",data_json,back_path,conf_folder 
+                                log_print(f"Download path found in saved '{brute_clechiffre['download_path']}' but not existing instead a similar path existing '{supposed_main_dir}' chosing this path.", F, True)
+                            else:
+                                log_print(f"The download path saved is not existing.", I, True)
+                                answer = messagebox.askyesno("Confirmation", f"The download path saved is not existing:\n'{supposed_main_dir}'\n Do you want to choose a new one ?")
+                                if answer:
+                                    return  "Please enter a new Path in the settings",data_json,back_path,conf_folder 
+                                else:
+                                    main_dir = supposed_main_dir
+                                    os.mkdir(main_dir)
+                            log_print(f"Updated download path: {main_dir}", F, True)
+                    else :
+                        log_print(f"No download path found", I, True)
+                        return  "No download path found, please choose one in setting.",data_json,back_path,conf_folder 
 
         except Exception as e:
             log_print(f"Error while reading data.json: \n{e}", A, False)
     else:
-        log_print(f"No download path found", I, True)
-        #messagebox.showinfo("Information",f"No download path found, please choose one in setting.")
-        return "No download path found, please choose one in setting.",data_json,back_path,conf_folder 
+        log_print(f"Data.json not found.", I, True)
+        return "Aucune donnée enregistré trouvé, veuillez rentrer un chemin de téléchargement ainsi qu'au moin une solution de téléchargement.",data_json,back_path,conf_folder 
 
 
     return main_dir,data_json,back_path,conf_folder                  
@@ -1293,6 +1308,7 @@ if __name__ == '__main__':
     aldl_deezer=[]
     arl = ""
     if_setting_empty_skip= []
+    unlocked = {"session":False}
 
     # Variable pour compter le nombre de fonction de téléchargements terminés
     counter_finish = 0
@@ -1302,26 +1318,26 @@ if __name__ == '__main__':
     supposed_main_dir,data_json,back_path,conf_folder = find_main_dir()
     downloaded_ids_log_file = os.path.join(conf_folder, 'downloaded_ids.json')
 
-    #mode 1 il manque sc et deezer : affiche que settings et youtube
-    #mode 2  sc ou deezer présent : affiche mdp
-    #mode 3 il manque tout : affiche settings
- 
-    #---------------------- Interface graphique ----------------------#
-
     # Création de la fenêtre principale
     root = tk.Tk()
 
-    #Si rien go settings
-    # if supposed_main_dir == "settings":
-    #     main_dir=""
-    #     open_settings()
-    # else:
-    #     main_dir = supposed_main_dir
+    # Liste pour les données trouvées dans data.json
+    data_found_saved = []
+
+    # Vérifier si les données de connexion chiffrées nécessaires aux solutions de téléchargement sont bien enrégistrées dans data.json
+    if all(key in brute_clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']):
+        data_found_saved.append('deezer')
+    if all(key in brute_clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']):
+        data_found_saved.append('soundcloud')
+    if all(key in brute_clechiffre for key in ['playlist_yt']):
+        data_found_saved.append('youtube')
+
+    log_print(f"DL solutions found in data.json: {data_found_saved}", F, True)
 
     #Si data.json vide message
     if not brute_clechiffre :
         root.iconify()
-        messagebox.showinfo("Information", "data.json is empty, please choose a download path in settings and at least one download solution.")
+        messagebox.showinfo("Information", supposed_main_dir)
         main_dir=""
         open_settings()
     #Si juste path go setting avec message
@@ -1356,9 +1372,28 @@ if __name__ == '__main__':
     style.configure("TButton", padding=6, relief="flat", background="#4d4d4d", foreground="white", font=("Helvetica", 10))
     style.map("TButton", background=[('active', '#5a5a5a')], foreground=[('active', 'white')])
 
-    #Si donnée chiffré message pour déchiffrer
-    if all(key in brute_clechiffre for key in ['email_dz', 'password_dz', 'playlist_id_deezer']) or all(key in brute_clechiffre for key in ['client_id_sc', 'auth_token_sc', 'soundcloud_link']):
+    # Télécharger l'icône des paramètres si elle n'existe pas déjà
+    if not os.path.exists(os.path.join(conf_folder, "settings.png")):
+        
+        # Télécharger l'image et l'enregistrer dans conf_folder
+        url = "https://cdn-icons-png.flaticon.com/512/503/503849.png"
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(os.path.join(conf_folder, "settings.png"), 'wb') as out_file:
+                shutil.copyfileobj(response.raw, out_file)
+            log_print("Settings icon downloaded successfully.", F, True)
+        else:
+            log_print("Failed to download settings icon.", A, True)
 
+    # Redimensionner l'image de l'icône et ajouter un bouton dynamique
+    settings_image = Image.open(os.path.join(conf_folder, "settings.png"))
+    settings_image = settings_image.resize((30, 30), Image.Resampling.LANCZOS)  # Redimensionner l'image
+    settings_icon = ImageTk.PhotoImage(settings_image)
+
+    #Si donnée chiffré message pour déchiffrer
+    if any(solutions in data_found_saved for solutions in ["deezer", "soundcloud"]):
+
+        # Entrée pour le mot de passe
         entry_password = ttk.Entry(root, show="*", font=("Helvetica", 18),)
         entry_password.grid(row=0, column=0, padx=200, pady=20, sticky="ew")
 
@@ -1366,28 +1401,9 @@ if __name__ == '__main__':
         button_unlock = ttk.Button(root, text="Déverrouiller", command=decrypt, style="TButton")
         button_unlock.grid(row=1, column=0, padx=300, pady=10, sticky="ew")
 
-        # Télécharger l'icône des paramètres si elle n'existe pas déjà
-        if not os.path.exists(os.path.join(conf_folder, "settings.png")):
-            
-            # Télécharger l'image et l'enregistrer dans conf_folder
-            url = "https://cdn-icons-png.flaticon.com/512/503/503849.png"
-            response = requests.get(url, stream=True)
-            if response.status_code == 200:
-                with open(os.path.join(conf_folder, "settings.png"), 'wb') as out_file:
-                    shutil.copyfileobj(response.raw, out_file)
-                log_print("Settings icon downloaded successfully.", F, True)
-            else:
-                log_print("Failed to download settings icon.", A, True)
-
-        # Redimensionner l'image de l'icône et ajouter un bouton dynamique
-        settings_image = Image.open(os.path.join(conf_folder, "settings.png"))
-        settings_image = settings_image.resize((30, 30), Image.Resampling.LANCZOS)  # Redimensionner l'image
-        settings_icon = ImageTk.PhotoImage(settings_image)
-
-        # Bouton pour l'icône paramètres, positionné dynamiquement
-        settings_button = tk.Button(root, image=settings_icon, command=open_settings, bg="#2f2f2f", relief="flat")
-        settings_button.place(relx=0.95, rely=0.07, anchor='ne')  # Placement dynamique
-
+    # Bouton pour l'icône paramètres, positionné dynamiquement
+    settings_button = tk.Button(root, image=settings_icon, command=open_settings, bg="#2f2f2f", relief="flat")
+    settings_button.grid(row=5, column=1, padx=10, pady=10, sticky="se")  # Placement en mode grille en bas à droite
 
     # Variables pour les cases à cocher
     var1 = tk.BooleanVar()
@@ -1413,7 +1429,7 @@ if __name__ == '__main__':
     root.grid_columnconfigure(0, weight=1)
 
     #Si juste yt unlock le bail
-    if ((len(brute_clechiffre) == 2 and "playlist_yt" in brute_clechiffre and "download_path" in brute_clechiffre) or (len(brute_clechiffre) == 1 and "playlist_yt" in brute_clechiffre)):
+    if data_found_saved == ['youtube']:
         clechiffre["playlist_yt"] = brute_clechiffre["playlist_yt"]
         unlock_program()
         #open_settings()
