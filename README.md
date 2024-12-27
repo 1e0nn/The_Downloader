@@ -1,33 +1,32 @@
 # Installation et Exécution du Programme
 
-## Prérequis
+## 1. **Télécharger le Script `requirement.ps1`**
 
-1. **Configurer la Politique d'Exécution PowerShell :**
+Téléchargez le fichier `requirement.ps1` à partir du dépôt officiel. Assurez-vous de le récupérer depuis une source fiable.
 
-   ```powershell
-   Set-ExecutionPolicy Unrestricted
-   ```
+## 2. **Placer le Script**
 
-   Cette commande permet de modifier la politique d'exécution de PowerShell pour permettre l'exécution des scripts non signés.
+Placez le fichier téléchargé à l'emplacement de votre choix. Veillez à lire les étapes suivantes avant de décider de l'endroit où le placer, car l'installation dépendra de ce choix.
 
-2. **Télécharger le Script requirement.ps1 :**
+## 3. **Ouvrir PowerShell et Exécuter le Script**
 
-   Téléchargez le fichier `requirement.ps1` à partir du dépôt.
+1. Ouvrez une fenêtre **PowerShell** avec les droits d'administrateur.  
+   (Cliquez droit sur l'icône PowerShell et sélectionnez **Exécuter en tant qu'administrateur**).
 
-3. **Placer le Script :**
-
-   Placez le fichier téléchargé `requirement.ps1` à l'emplacement où vous souhaitez exécuter votre programme `the_downloader.pyw`.
-
-4. **Ouvrir PowerShell et Exécuter le Script :**
-
-   Ouvrez une fenêtre PowerShell, rentrer le chemin du script `requirement.ps1` et exécutez-le en utilisant la commande suivante :
-
+2. Exécutez le script :
    ```powershell
    .\requirement.ps1
    ```
 
-## Remarque
+## 4. **Choix du Type d’Installation**
 
-Assurez-vous que vous avez les autorisations nécessaires pour modifier la politique d'exécution et exécuter des scripts sur votre système.
+Lors de l’exécution du script, vous serez invité à choisir parmi les options suivantes :  
 
----
+- **USB :**  
+  Installe une version transportable. Le programme sera installé au même emplacement que le script PowerShell. Idéal pour une utilisation nomade sur différents ordinateurs.
+
+- **PC :**  
+  Installe une version fixe. Un raccourci sera créé sur le **bureau** et dans le **menu Démarrer** pour un accès facile et une intégration propre au système.
+
+- **Requirement :**  
+  Installe uniquement les dépendances nécessaires. Cette option est conçue pour les utilisateurs qui ont déjà installé et configuré le programme sur une clé USB et souhaitent simplement installer les dépendances pour le faire fonctionner.
