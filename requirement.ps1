@@ -94,8 +94,8 @@ function Download-Repo {
         }
         # créer un raccourci
         if ($response -eq "pc") {
-        $scriptPath = Join-Path -Path $root_path -ChildPath "The_Downloader.py"
-        Create-Shortcut -scriptPath $scriptPath
+            $scriptPath = Join-Path -Path $root_path -ChildPath "The_Downloader.py"
+            Create-Shortcut -scriptPath $scriptPath
         }
 
         Remove-Item -Path "$root_path\README.md" -Force
@@ -327,6 +327,7 @@ function Create-Shortcut {
     Write-Host "Un raccourci vers DJ Downloader a été créé sur le bureau et dans le menu Démarrer." -ForegroundColor Green
 }
 
+
 # Début du script -----------------------------------------------------------------------------------------------
 
 # Vérifier dossier path d'environnement existant
@@ -337,13 +338,13 @@ if (-Not (Test-Path $ExeFolderPath)) {
 }
 
 # Vérifier si le script doit être enregistré sur une clé USB ou un PC
-$response = Read-Host "Le script est-il exécuté depuis une clé USB ou un PC? (usb/pc)"
+$response = Read-Host "Qu'elle type d'installation voulez-vous faire ? (usb/pc/requirements)"
 if ($response -eq "usb") {
     #Write-Host "Vous avez indiqué que le script est exécuté depuis une clé USB." -ForegroundColor Green*
     Set-Location -Path (Split-Path -Path $MyInvocation.MyCommand.Definition -Parent)
     $root_path = Get-Location
     #$CurrentDirectory = Get-Location
-} elseif ($response -eq "pc") {
+} elseif ($response -eq "pc" -or $response -eq "requirements") {
     #Write-Host "Vous avez indiqué que le script est exécuté depuis un PC." -ForegroundColor Green
     $TheDownloaderPath = Join-Path -Path $ExeFolderPath -ChildPath "The_Downloader"
     $root_path = $TheDownloaderPath
@@ -371,4 +372,8 @@ Test-AdminRights
 Test-InternetConnection
 Install-Python
 Download-Repo
-Remove-dependencies
+if ($response -eq "requirements") {
+    Remove-Item -Path $TheDownloaderPath -Recurse -Force
+} else {
+    Remove-dependencies
+}
