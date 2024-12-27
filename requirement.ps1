@@ -299,41 +299,6 @@ function Remove-dependencies {
     }
 }
 
-# Début du script -----------------------------------------------------------------------------------------------
-
-# Change to the directory where the script is located
-
-
-# Vérifier dossier path d'environnement existant
-$ExeFolderPath = "$env:USERPROFILE\AppData\Local\Microsoft\WindowsApps" #-ChildPath "The_Downloader"
-if (-Not (Test-Path $ExeFolderPath)) {
-    exit 100
-    Write-Host "Le dossier $ExeFolderPath n'existe pas." -ForegroundColor Red
-}
-
-
-# Vérifier si le script doit être enregistré sur une clé USB ou un PC
-$response = Read-Host "Le script est-il exécuté depuis une clé USB ou un PC? (usb/pc)"
-if ($response -eq "usb") {
-    #Write-Host "Vous avez indiqué que le script est exécuté depuis une clé USB." -ForegroundColor Green*
-    Set-Location -Path (Split-Path -Path $MyInvocation.MyCommand.Definition -Parent)
-    $root_path = Get-Location
-    #$CurrentDirectory = Get-Location
-} elseif ($response -eq "pc") {
-    #Write-Host "Vous avez indiqué que le script est exécuté depuis un PC." -ForegroundColor Green
-    $TheDownloaderPath = Join-Path -Path $ExeFolderPath -ChildPath "The_Downloader"
-    $root_path = $TheDownloaderPath
-    if (-Not (Test-Path $TheDownloaderPath)) {
-        New-Item -ItemType Directory -Path $TheDownloaderPath | Out-Null
-        #Write-Host "Le dossier The_Downloader a été créé." -ForegroundColor Green
-    } else {
-        #Write-Host "Le dossier The_Downloader existe déjà." -ForegroundColor Yellow
-    }
-} else {
-    Write-Host "Réponse non reconnue. Veuillez répondre par 'usb' ou 'pc'." -ForegroundColor Red
-    exit 1
-}
-
 function Create-Shortcut {
     param (
         [string]$scriptPath
@@ -362,10 +327,36 @@ function Create-Shortcut {
     Write-Host "Un raccourci vers DJ Downloader a été créé sur le bureau et dans le menu Démarrer." -ForegroundColor Green
 }
 
+# Début du script -----------------------------------------------------------------------------------------------
 
-# Affiche le répertoire de travail actuel
-#Write-Host "Current working directory: $(Get-Location)" -ForegroundColor Cyan
+# Vérifier dossier path d'environnement existant
+$ExeFolderPath = "$env:USERPROFILE\AppData\Local\Microsoft\WindowsApps" #-ChildPath "The_Downloader"
+if (-Not (Test-Path $ExeFolderPath)) {
+    exit 100
+    Write-Host "Le dossier $ExeFolderPath n'existe pas." -ForegroundColor Red
+}
 
+# Vérifier si le script doit être enregistré sur une clé USB ou un PC
+$response = Read-Host "Le script est-il exécuté depuis une clé USB ou un PC? (usb/pc)"
+if ($response -eq "usb") {
+    #Write-Host "Vous avez indiqué que le script est exécuté depuis une clé USB." -ForegroundColor Green*
+    Set-Location -Path (Split-Path -Path $MyInvocation.MyCommand.Definition -Parent)
+    $root_path = Get-Location
+    #$CurrentDirectory = Get-Location
+} elseif ($response -eq "pc") {
+    #Write-Host "Vous avez indiqué que le script est exécuté depuis un PC." -ForegroundColor Green
+    $TheDownloaderPath = Join-Path -Path $ExeFolderPath -ChildPath "The_Downloader"
+    $root_path = $TheDownloaderPath
+    if (-Not (Test-Path $TheDownloaderPath)) {
+        New-Item -ItemType Directory -Path $TheDownloaderPath | Out-Null
+        #Write-Host "Le dossier The_Downloader a été créé." -ForegroundColor Green
+    } else {
+        #Write-Host "Le dossier The_Downloader existe déjà." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Réponse non reconnue. Veuillez répondre par 'usb' ou 'pc'." -ForegroundColor Red
+    exit 1
+}
 
 # Désactive les messages de progression afin de rendre rapide les téléchargements
 $ProgressPreference = 'SilentlyContinue'
@@ -376,8 +367,8 @@ $requirementsFile = Join-Path -Path $Dependencies -ChildPath "requirements.txt"
 Remove-dependencies
 
 #Lance les fonctions de test
-# Test-AdminRights
-# Test-InternetConnection
-# Install-Python
+Test-AdminRights
+Test-InternetConnection
+Install-Python
 Download-Repo
 Remove-dependencies
