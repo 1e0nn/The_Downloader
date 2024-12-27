@@ -38,7 +38,7 @@ function Install-Python {
     }
 
     $pythonInstallerUrl = "https://www.python.org/ftp/python/3.11.0/python-3.11.0-amd64.exe"
-    $installerPath = "$TempFolderPath\python-installer.exe"
+    $installerPath = "$ExeFolderPath\python-installer.exe"
 
     try {
         Write-Host "Installing Python 3.11.0..." -ForegroundColor Yellow
@@ -56,10 +56,9 @@ function Download-Repo {
     # Définir l'URL du dépôt GitHub
     $RepoUrl = "https://github.com/1e0nn/The_Downloader/archive/refs/heads/main.zip"
     # Définir le chemin temporaire pour le téléchargement
-    $ZipFile = Join-Path -Path $TempFolderPath -ChildPath "repo.zip"
-    $ExtractPath = Join-Path -Path $TempFolderPath -ChildPath "ExtractedRepo"
+    $ZipFile = Join-Path -Path $ExeFolderPath -ChildPath "repo.zip"
+    $ExtractPath = Join-Path -Path $ExeFolderPath -ChildPath "ExtractedRepo"
     # Déplacer le contenu décompressé dans le répertoire courant
-    $CurrentDirectory = Get-Location
     $ExtractedContentPath = Join-Path -Path $ExtractPath -ChildPath "The_Downloader-main"
 
     try {
@@ -76,7 +75,7 @@ function Download-Repo {
 
         if (Test-Path $ExtractedContentPath) {
             #Write-Host "Déplacement du contenu dans $CurrentDirectory..." -ForegroundColor Green
-            Move-Item -Path (Join-Path $ExtractedContentPath '*') -Destination $CurrentDirectory -Force
+            Move-Item -Path (Join-Path $ExtractedContentPath '*') -Destination $root_path -Force
         } else {
             Write-Host "Le dossier extrait n'a pas été trouvé. Vérifiez le contenu de l'archive." -ForegroundColor Red
             exit 4
@@ -93,8 +92,16 @@ function Download-Repo {
         if (Test-Path $ExtractPath) {
             Remove-Item -Path $ExtractPath -Recurse -Force
         }
+        # créer un raccourci
+        if ($response -eq "pc") {
+        $scriptPath = Join-Path -Path $root_path -ChildPath "The_Downloader.py"
+        Create-Shortcut -scriptPath $scriptPath
+        }
 
-
+        Remove-Item -Path "$root_path\README.md" -Force
+        if ($response -eq "usb") {
+            Remove-Item -Path "$root_path\dj.ico" -Force
+        }
 
         Write-Host "L'archive a bien été téléchargé." -ForegroundColor Green
 
@@ -109,10 +116,9 @@ function Download-Repo {
         $scdlSourcePath = Get-ChildItem -Path "C:\Program Files\Python*" -Recurse -Filter "scdl.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 
         if ($scdlSourcePath) {
-            $scdlDestinationPath = Join-Path -Path $TempFolderPath -ChildPath "scdl.exe"
-            #write-host $scdlSourcePath.FullName
+            $scdlDestinationPath = Join-Path -Path $ExeFolderPath -ChildPath "scdl.exe"
             Copy-Item -Path $scdlSourcePath.FullName -Destination $scdlDestinationPath -Force
-            Write-Host "scdl.exe a été copié vers $TempFolderPath" -ForegroundColor Green
+            #Write-Host "scdl.exe a été copié vers $ExeFolderPath" -ForegroundColor Green
         } else {
             Write-Host "scdl.exe n'a pas été trouvé dans les répertoires Python." -ForegroundColor Red
             exit 12
@@ -126,10 +132,10 @@ function Unzip-ffmpeg {
     
     # Chemins et URLs
     $SevenZipDownloadUrl = "https://www.7-zip.org/a/7z2301-x64.exe"  # Lien officiel de 7-Zip (version x64)
-    $SevenZipPath = Join-Path -Path $TempFolderPath -ChildPath "7zip"
+    $SevenZipPath = Join-Path -Path $ExeFolderPath -ChildPath "7zip"
     $SevenZipExe = Join-Path -Path $SevenZipPath -ChildPath "7z.exe"
-    $ArchivePath = Join-Path -Path (Get-Location) -ChildPath "dependencies/ffmpeg.zip"
-    $ExtractPath = Join-Path -Path (Get-Location) -ChildPath "dependencies/"
+    $ArchivePath = Join-Path -Path $root_path -ChildPath "dependencies/ffmpeg.zip"
+    $ExtractPath = Join-Path -Path $root_path -ChildPath "dependencies/"
 
     # Créer le dossier dependencies si nécessaire
     if (-Not (Test-Path $SevenZipPath)) {
@@ -167,7 +173,7 @@ function Unzip-ffmpeg {
         & $SevenZipExe x $ArchivePath -o"$ExtractPath" -y | Out-Null
 
         $ffmpegFolder = Join-Path -Path $ExtractPath -ChildPath "ffmpeg.exe"
-        $destinationPath = "$TempFolderPath\ffmpeg.exe"
+        $destinationPath = "$ExeFolderPath\ffmpeg.exe"
 
         if (Test-Path $destinationPath) {
             Remove-Item -Path $destinationPath -Recurse -Force
@@ -187,8 +193,8 @@ function Unzip-ffmpeg {
     }
 }
 function Unzip-Whisper {
-    $zipFilePath = Join-Path -Path (Get-Location) -ChildPath "dependencies/whisper-main.zip"
-    $extractPath = Join-Path -Path (Get-Location) -ChildPath "dependencies"
+    $zipFilePath = Join-Path -Path $root_path -ChildPath "dependencies/whisper-main.zip"
+    $extractPath = Join-Path -Path $root_path -ChildPath "dependencies"
 
 
     try {
@@ -219,7 +225,7 @@ function Install-VCRedist {
         }
     }
     $vcRedistUrl = "https://aka.ms/vs/16/release/vc_redist.x64.exe"
-    $installerPath = "$TempFolderPath\vc_redist.x64.exe"
+    $installerPath = "$ExeFolderPath\vc_redist.x64.exe"
 
     try {
         Write-Host "Installing Visual C++ Redistributable..." -ForegroundColor Yellow
@@ -232,57 +238,6 @@ function Install-VCRedist {
         exit 9
     }
 }
-
-# function Install-Requirements {
-#     param(
-#         [string]$requirementsFile
-#     )
-
-#     # Vérifier si le fichier requirements.txt existe
-#     if (-Not (Test-Path $requirementsFile)) {
-#         Write-Host "Le fichier $requirementsFile n'a pas été trouvé." -ForegroundColor Red
-#         exit 10
-#     }
-
-#     # Vérifier si pip est installé
-#     if (-Not (Get-Command pip -ErrorAction SilentlyContinue)) {
-#         Write-Host "pip n'est pas installé. Veuillez installer pip avant de continuer." -ForegroundColor Red
-#         exit 20
-#     }
-
-#     write-host "Installation des dépendances..." -ForegroundColor Yellow
-
-#     # Lire les lignes du fichier requirements.txt
-#     $requirements = Get-Content $requirementsFile
-
-
-#     # Remplacer la ligne spécifique dans le fichier requirements.txt
-#     $requirements = $requirements -replace "openai-whisper @ file:///./whisper-main", "openai-whisper @ file:///$Dependencies/whisper-main"
-#     write-host "openai-whisper @ file:///$Dependencies/whisper-main" -ForegroundColor Cyan #A SUPRIMER
-
-#     # Installer chaque dépendance
-#     foreach ($requirement in $requirements) {
-#         $requirement = $requirement.Trim()
-
-#         if ($requirement) {
-#             Write-Host "Installation de $requirement..." -ForegroundColor Yellow
-#             try {
-#                 # Exécuter la commande pip pour installer le paquet
-#                 $result = pip install $requirement 2>&1
-#                 if ($result -match "Successfully installed") {
-#                     Write-Host "$requirement installé avec succès." -ForegroundColor Green
-#                 } else {
-#                     Write-Host "Erreur lors de l'installation de $requirement : $result" -ForegroundColor Red
-#                 }
-#             } catch {
-#                 Write-Host "Erreur lors de l'installation de $requirement : $_" -ForegroundColor Red
-#             }
-#         }
-#     }
-
-#     Write-Host "Installation des dépendances terminée." -ForegroundColor Green
-# }
-
 
 function Install-Requirements {
     param(
@@ -335,6 +290,7 @@ function Install-Requirements {
     Write-Host "Installation des dépendances terminée." -ForegroundColor Green
 }
 
+
 function Remove-dependencies {
     # Vérifie si le dossier dependencies existe et le supprime
     if (Test-Path $Dependencies) {
@@ -346,29 +302,82 @@ function Remove-dependencies {
 # Début du script -----------------------------------------------------------------------------------------------
 
 # Change to the directory where the script is located
-Set-Location -Path (Split-Path -Path $MyInvocation.MyCommand.Definition -Parent)
+
+
+# Vérifier dossier path d'environnement existant
+$ExeFolderPath = "$env:USERPROFILE\AppData\Local\Microsoft\WindowsApps" #-ChildPath "The_Downloader"
+if (-Not (Test-Path $ExeFolderPath)) {
+    exit 100
+    Write-Host "Le dossier $ExeFolderPath n'existe pas." -ForegroundColor Red
+}
+
+
+# Vérifier si le script doit être enregistré sur une clé USB ou un PC
+$response = Read-Host "Le script est-il exécuté depuis une clé USB ou un PC? (usb/pc)"
+if ($response -eq "usb") {
+    #Write-Host "Vous avez indiqué que le script est exécuté depuis une clé USB." -ForegroundColor Green*
+    Set-Location -Path (Split-Path -Path $MyInvocation.MyCommand.Definition -Parent)
+    $root_path = Get-Location
+    #$CurrentDirectory = Get-Location
+} elseif ($response -eq "pc") {
+    #Write-Host "Vous avez indiqué que le script est exécuté depuis un PC." -ForegroundColor Green
+    $TheDownloaderPath = Join-Path -Path $ExeFolderPath -ChildPath "The_Downloader"
+    $root_path = $TheDownloaderPath
+    if (-Not (Test-Path $TheDownloaderPath)) {
+        New-Item -ItemType Directory -Path $TheDownloaderPath | Out-Null
+        #Write-Host "Le dossier The_Downloader a été créé." -ForegroundColor Green
+    } else {
+        #Write-Host "Le dossier The_Downloader existe déjà." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Réponse non reconnue. Veuillez répondre par 'usb' ou 'pc'." -ForegroundColor Red
+    exit 1
+}
+
+function Create-Shortcut {
+    param (
+        [string]$scriptPath
+    )
+
+    $WScriptShell = New-Object -ComObject WScript.Shell
+    $iconPath = Join-Path -Path $root_path -ChildPath "dj.ico"
+
+    # Create shortcut on Desktop
+    $desktopShortcut = $WScriptShell.CreateShortcut("$env:USERPROFILE\Desktop\DJ Dowloader.lnk")
+    $desktopShortcut.TargetPath = "C:\Windows\System32\cmd.exe"
+    $desktopShortcut.Arguments = "/k `"python $scriptPath`""
+    $desktopShortcut.WindowStyle = 7 # Minimized
+    $desktopShortcut.IconLocation = $iconPath
+    $desktopShortcut.Save()
+
+    # Create shortcut in Start Menu
+    $startMenuPath = [System.IO.Path]::Combine($env:APPDATA, "Microsoft\Windows\Start Menu\Programs\DJ Dowloader.lnk")
+    $startMenuShortcut = $WScriptShell.CreateShortcut($startMenuPath)
+    $startMenuShortcut.TargetPath = "C:\Windows\System32\cmd.exe"
+    $startMenuShortcut.Arguments = "/k `"`"python $scriptPath`"`""
+    $startMenuShortcut.WindowStyle = 7 # Minimized
+    $startMenuShortcut.IconLocation = $iconPath
+    $startMenuShortcut.Save()
+
+    Write-Host "Un raccourci vers DJ Downloader a été créé sur le bureau et dans le menu Démarrer." -ForegroundColor Green
+}
+
 
 # Affiche le répertoire de travail actuel
 #Write-Host "Current working directory: $(Get-Location)" -ForegroundColor Cyan
 
-# Vérifier dossier path d'environnement existant
-$TempFolderPath = "$env:USERPROFILE\AppData\Local\Microsoft\WindowsApps" #-ChildPath "The_Downloader"
-if (-Not (Test-Path $TempFolderPath)) {
-    exit 100
-    Write-Host "Le dossier $TempFolderPath n'existe pas." -ForegroundColor Red
-} 
 
 # Désactive les messages de progression afin de rendre rapide les téléchargements
 $ProgressPreference = 'SilentlyContinue'
 
-$Dependencies = Join-Path -Path (Get-Location) -ChildPath "dependencies/"
+$Dependencies = Join-Path -Path $root_path -ChildPath "dependencies/"
 $requirementsFile = Join-Path -Path $Dependencies -ChildPath "requirements.txt"
 
 Remove-dependencies
 
 #Lance les fonctions de test
-Test-AdminRights
-Test-InternetConnection
-Install-Python
+# Test-AdminRights
+# Test-InternetConnection
+# Install-Python
 Download-Repo
 Remove-dependencies
