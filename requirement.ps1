@@ -114,12 +114,20 @@ function Download-Repo {
 
         # Déplace scdl.exe de dependencies vers TempFolderPath
         $scdlSourcePath = Get-ChildItem -Path "C:\Program Files\Python*" -Recurse -Filter "scdl.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+        $scdlDestinationPath = Join-Path -Path $ExeFolderPath -ChildPath "scdl.exe"
 
-        if ($scdlSourcePath) {
-            $scdlDestinationPath = Join-Path -Path $ExeFolderPath -ChildPath "scdl.exe"
+
+        if ($scdlSourcePath){
             Copy-Item -Path $scdlSourcePath.FullName -Destination $scdlDestinationPath -Force
             #Write-Host "scdl.exe a été copié vers $ExeFolderPath" -ForegroundColor Green
-        } else {
+        }else{
+            $scdlSourcePath = Get-ChildItem -Path "$env:USERPROFILE\appdata\roaming\python\Python*" -Recurse -Filter "scdl.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($scdlSourcePath){
+                Copy-Item -Path $scdlSourcePath.FullName -Destination $scdlDestinationPath -Force
+            }
+            #Write-Host "scdl.exe a été copié vers $ExeFolderPath" -ForegroundColor Green
+        }
+        if (-not $scdlSourcePath ) { 
             Write-Host "scdl.exe n'a pas été trouvé dans les répertoires Python." -ForegroundColor Red
             exit 12
         }
