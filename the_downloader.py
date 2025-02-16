@@ -1,7 +1,4 @@
 import json
-from pydeezer import Deezer
-from pydeezer import Downloader
-from pydeezer.constants import track_formats
 from datetime import datetime as C,timedelta as G
 import shutil
 import subprocess
@@ -9,7 +6,6 @@ import sys
 import yt_dlp
 import getpass
 import difflib
-import re
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
@@ -25,7 +21,6 @@ import warnings
 import random
 from getpass import getuser
 import requests
-from io import StringIO
 import unicodedata
 import tkinter as tk
 from tkinter import messagebox
@@ -36,6 +31,7 @@ import threading
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
+from deezer import *
 
 
 # Fonction pour déverrouiller le programme et afficher les éléments
@@ -460,7 +456,6 @@ def check_completion(total_tasks):
 
 def download_from_deezer():
     global arl
-    global deezer
     global counter_finish
 
     if not arl:
@@ -468,9 +463,55 @@ def download_from_deezer():
     elif arl == "error":
         return
     
-    deezer = Deezer(arl=arl)
-    aldl_deezer, already_dl_dico = retrieve_id_and_title(clechiffre['playlist_id_deezer'])
-    download_tracks(sng_ids)
+    if os.path.exists(downloaded_ids_log_file):
+        init_deezer_session(arl, "", "mp3")
+
+        downloaded_ids = {"youtube": [], "deezer": []}
+        # Charger le fichier JSON s'il existe déjà
+        with open(downloaded_ids_log_file, 'r') as json_file:
+            downloaded_ids = json.load(json_file)
+        
+        
+        already_dl.update(map(str, downloaded_ids["deezer"]))  # Assurez-vous que les éléments sont des chaînes
+
+        playlist_name, songs = parse_deezer_playlist(clechiffre['playlist_id_deezer'])
+        #print(len(songs))
+        #print(songs)
+        songs = [song for song in songs if song['SNG_ID'] not in already_dl]
+
+        log_print(f"{len(already_dl)} tracks skipped because they were already downloaded.", I, True)
+        log_print(f"Already Downloaded Tracks: \n{already_dl}", I,False)
+        log_print(f"Downloading {len(songs)} tracks from Deezer...", I, True)
+
+        for i, song in enumerate(songs):
+            try:
+                # if song['SNG_ID'] in already_dl:
+                #     continue
+                download_song_and_get_absolute_filename(song,downloaded_ids,main_dir )
+            except Exception as e:
+                print(f"Warning: {e}. Continuing with playlist...")   
+        
+        update_json_file(sng_ids,"deezer")
+        
+
+
+        if sng_titles == 1:
+            display_download_info(f"{len(sng_titles)} musique téléchargée depuis deezer:", sng_titles)
+            log_print(f"1 track downloaded.", F, True)
+            log_print(f"Downloaded Tracks: \n{sng_titles}", F, True)
+        elif len(sng_titles) == 0:
+            log_print(f"No tracks downloaded.\n", I, True)
+            display_download_info("Aucune nouvelle musique à télécharger depuis deezer.", '')
+        else:
+            display_download_info(f"{len(sng_titles)} musiques téléchargées depuis deezer:", sng_titles)
+            log_print(f"{len(sng_titles)} tracks downloaded.", F, True)
+            log_print(f"Downloaded Tracks: \n{sng_titles}", F, True)
+
+
+
+    # deezer = Deezer(arl=arl)
+    # aldl_deezer, already_dl_dico = retrieve_id_and_title(clechiffre['playlist_id_deezer'])
+    # download_tracks(sng_ids)
 
     # Incrémenter le compteur une fois terminé
     with counter_lock:
@@ -821,21 +862,26 @@ def login_deezer(email, password):
 
     browser.get('https://www.deezer.com/fr/login?')
 
+    sleep(2)
+
     def good():
         # Vérifier si le site a été redirigé afin de savoir si l'utilisateur est déjà connecté et ainsi éviter de se reconnecter
         sleep(random_delay())
-        if browser.current_url != 'https://www.deezer.com/fr/login?':
+        # https://account.deezer.com/fr/members/picker/?redirect_uri=https%3A%2F%2Fwww.deezer.com%2Ffr%2F
+        if browser.current_url == "https://account.deezer.com/fr/members/picker/?redirect_uri=https%3A%2F%2Fwww.deezer.com%2Ffr%2F":
             log_print("Le site deezer est déja connecté.", I, False)
             cookies = browser.get_cookies()
             for cookie in cookies:
                 if cookie['name'] == 'arl':
                     return cookie['value']
-        log_print("Deezer non connecté, le script essaye une autre méthode d'authentification.", I, False)                
+        log_print("Deezer non connecté, le script essaye une autre méthode d'authentification.", I, False)  
+
+
+    cookie = good()
+    if cookie:
+        return cookie              
 
     try:
-        cookie = good()
-        if cookie:
-            return cookie
         
         try:
             #  Attendre que l'élément soit visible
@@ -846,144 +892,68 @@ def login_deezer(email, password):
                 agree_button.click()
         except:
             log_print('Pop-up non visible', I, False)
+	
 
         #envoie des données d'authentification
         browser.find_element(By.ID, 'email').send_keys(email)
         browser.find_element(By.ID, 'password').send_keys(password)
-        browser.find_element(By.XPATH, '//*[@id="__next"]/div/div[2]/form/div/button').click()
+        browser.find_element(By.XPATH, '//*[@id="__next"]/div/div[2]/div/form/div/button').click()
 
+        sleep(1)
         cookie = good()
         if cookie:
             return cookie
-        else:
-            #Bypass du captcha
-            try:
-                if browser.find_element(By.XPATH, ".//iframe[@title='recaptcha challenge expires in two minutes']"):
-                    model = whisper.load_model("base")
-                    browser.switch_to.default_content()
-                    browser.switch_to.frame(browser.find_element(By.XPATH, ".//iframe[@title='recaptcha challenge expires in two minutes']"))
-                    log_print("Bypass du captcha deezer en cours...",I,True)
-                    # Charger le modèle de transcription
-                    sleep(10)
-                    request_audio_version(browser)
-                    sleep(0.5)
-                    solve_audio_captcha(browser,model)
-                    log_print('Captcha solved', F, True)
-                    sleep(random_delay())
-                    cookie = good()
-                    if cookie:
-                        return cookie
-                else:
-                    log_print("Aucun captcha trouvé.",I,True)
-                    messagebox.showerror("Erreur", f"Error Occurred in deezer login.")
-                    return "error"
-            except Exception as e:
-                log_print(f"Error Occurred in bypassing deezer captcha: \n{e}", A, True)
+        #else:
+        #Bypass du captcha
+        try:
+            if browser.find_element(By.XPATH, ".//iframe[@title='recaptcha challenge expires in two minutes']"):
+                model = whisper.load_model("base")
+                browser.switch_to.default_content()
+                browser.switch_to.frame(browser.find_element(By.XPATH, ".//iframe[@title='recaptcha challenge expires in two minutes']"))
+                log_print("Bypass du captcha deezer en cours...",I,True)
+                # Charger le modèle de transcription
+                sleep(10)
+                request_audio_version(browser)
+                sleep(0.5)
+                solve_audio_captcha(browser,model)
+                log_print('Captcha solved', F, True)
+                sleep(random_delay())
+                cookie = good()
+                if cookie:
+                    return cookie
+            else:
+                log_print("Aucun captcha trouvé.",I,True)
+                messagebox.showerror("Erreur", f"Error Occurred in deezer login.")
                 return "error"
+        except Exception as e:
+            log_print(f"Error Occurred in bypassing deezer captcha: \n{e}", A, True)
+            return "error"
         
     except Exception as e:
         log_print(f"Error Occurred in deezer login: \n{e}", A, True)
         messagebox.showerror("Erreur", f"Error Occurred in deezer login.")
         return "error"
+    
+def download_song_and_get_absolute_filename(song, downloaded_ids, download_path):
+    #global skipped_song
 
-#deezer retreive playlist
-def retrieve_id_and_title(id):  
-    print("\n")
-    log_print("Downloading from Deezer...", F, True)
-    id_to_re_dl_dc = {}
-    ti_aldl = []
-    sng_ids.clear()
-    sng_titles.clear()
+    file_extension = get_file_extension()
 
-    try:
-        downloaded_ids = {"youtube": [], "deezer": []}
-        # Charger le fichier JSON s'il existe déjà
-        if os.path.exists(downloaded_ids_log_file):
-            with open(downloaded_ids_log_file, 'r') as json_file:
-                downloaded_ids = json.load(json_file)
+    song_filename = "{} - {}.{}".format(song['ART_NAME'],
+                                        song['SNG_TITLE'],
+                                        file_extension)
+    
+    song_filename = clean_filename(song_filename)
 
-            already_dl.update(map(str, downloaded_ids["deezer"]))  # Assurez-vous que les éléments sont des chaînes
+    absolute_filename = os.path.join(download_path, song_filename)
 
-        # Get the playlist tracks
-        track = deezer.get_playlist_tracks(id)
-
-        # Iterate through the list and extract the required information
-        for item in track:
-            if item['SNG_ID'] in already_dl:
-                id_to_re_dl_dc[item['SNG_TITLE']] = item['SNG_ID']
-                ti_aldl.append(item['SNG_TITLE'])
-                pass
-            else:
-                sng_ids.append(item['SNG_ID'])
-                sng_titles.append(f"{item['SNG_TITLE']} - {item['ART_NAME']}")
-
-        if len(already_dl) > 0:
-            log_print(f"{len(already_dl)} tracks skipped because they were already downloaded.", I, True)
-            log_print(f"Already Downloaded Tracks: \n{ti_aldl}", I,False)
-
-        if len(sng_ids) > 0:
-            log_print(f"{len(sng_ids)} tracks will be downloaded.", I, True)
-            # Print the results
-            # print("SNG_IDs:", sng_ids)
-            # print("SNG_TITLEs:", sng_titles)
-
-        return ti_aldl, id_to_re_dl_dc
-
-    except Exception as e:
-        log_print(f"Error Occurred in deezer list songs : \n{e}", A, True)
-        messagebox.showerror("Erreur", f"Error Occurred in deezer list songs.")
-        return "error"
-
-#deezer download
-def download_tracks(list_of_ids):
-    try:
-        # Rediriger stdout vers un StringIO
-        sys.stdout = StringIO()
-        
-        downloader = Downloader(deezer, list_of_ids, main_dir, quality=track_formats.FLAC, concurrent_downloads=4)
-        downloader.start()
-
-        # Récupérer la sortie sous forme de chaîne de caractères
-        output = sys.stdout.getvalue()
-
-        # Réinitialiser stdout
-        sys.stdout = sys.__stdout__
-
-        # Utiliser une expression régulière pour extraire le nombre de pistes
-        matches = re.search(r'Done downloading all (\d+) tracks.', output)
-
-        # Vérifier si une correspondance a été trouvée
-        if matches:
-            # Extraire le nombre de pistes
-            num_tracks = int(matches.group(1))
-            if num_tracks != len(list_of_ids):
-                log_print(f"Une erreur s'est produite lors du téléchargement de {len(list_of_ids) - num_tracks} pistes.", A, True)
-                if num_tracks > 0:
-                    log_print(f"Les {len(num_tracks) - list_of_ids} autres pistes ont bien été téléchargées", F, True)
-            else:
-                log_print(f"Output de deezer: \n{output}\n", I, False)
-        else:
-            log_print("Aucune correspondance trouvée pour le 'Done downloading all X tracks.' de deezer.", I, True)
-
-
-        if len(sng_titles) > 0:
-            log_print(f"{num_tracks} tracks downloaded. ", F, True)
-            log_print(f"Tracks downloaded: \n{sng_titles}\n", F, True)
-            # Appeler la fonction pour mettre à jour le fichier JSON avec les IDs téléchargés
-            update_json_file(sng_ids, "deezer")
-            if num_tracks == 1:
-                display_download_info(f"{num_tracks} musique téléchargée depuis deezer:", sng_titles)
-            else:
-                display_download_info(f"{num_tracks} musiques téléchargées depuis deezer:", sng_titles)
-
-        else:
-            log_print(f"No tracks downloaded.\n", I, True)
-            display_download_info("Aucune nouvelle musique à télécharger depuis deezer.", '')
-
-    except Exception as e:
-        log_print(f"Error Occurred in deezer dl : \n{e}", A, True)
-        messagebox.showerror("Erreur", f"Error Occurred in deezer dl.")
-        return "error"
+    # if os.path.exists(absolute_filename):
+    #     print("Skipping song '{}'. Already exists.".format(absolute_filename))
+    #else:
+    #print("Downloading '{}'".format(song_filename))
+    if download_song(song, absolute_filename):
+        sng_titles.append(song_filename)
+        sng_ids.append(song['SNG_ID'])
 
 #soundcloud download
 def run_soundcloud_command(link, client_id, auth_token, download_path):
