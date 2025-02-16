@@ -477,19 +477,38 @@ def download_from_deezer():
         playlist_name, songs = parse_deezer_playlist(clechiffre['playlist_id_deezer'])
         #print(len(songs))
         #print(songs)
-        songs = [song for song in songs if song['SNG_ID'] not in already_dl]
+        filtered_songs = []
+        already_dl_name = []
+        for song in songs:
+            if song['SNG_ID'] not in already_dl:
+                filtered_songs.append(song)
+            else:
+                song_filename = f"{song['ART_NAME']} - {song['SNG_TITLE']}"
+                already_dl_name.append(song_filename)
+
+        #songs = filtered_songs
 
         log_print(f"{len(already_dl)} tracks skipped because they were already downloaded.", I, True)
-        log_print(f"Already Downloaded Tracks: \n{already_dl}", I,False)
-        log_print(f"Downloading {len(songs)} tracks from Deezer...", I, True)
+        log_print(f"Already Downloaded Tracks: \n{already_dl_name}", I,False)
+        if len(filtered_songs) == 1:
+            log_print(f"Downloading {len(filtered_songs)} tracks from Deezer...", I, True)
+        else:
+            log_print(f"There is no new track to download from Deezer.", I, True)
 
-        for i, song in enumerate(songs):
+        def download_song_thread(song):
             try:
-                # if song['SNG_ID'] in already_dl:
-                #     continue
-                download_song_and_get_absolute_filename(song,downloaded_ids,main_dir )
+                download_song_and_get_absolute_filename(song, downloaded_ids, main_dir)
             except Exception as e:
-                print(f"Warning: {e}. Continuing with playlist...")   
+                print(f"Warning: {e}. Continuing with playlist...")
+
+        threads = []
+        for song in filtered_songs:
+            thread = threading.Thread(target=download_song_thread, args=(song,))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
         
         update_json_file(sng_ids,"deezer")
         
@@ -862,8 +881,6 @@ def login_deezer(email, password):
 
     browser.get('https://www.deezer.com/fr/login?')
 
-    sleep(2)
-
     def good():
         # Vérifier si le site a été redirigé afin de savoir si l'utilisateur est déjà connecté et ainsi éviter de se reconnecter
         sleep(random_delay())
@@ -899,7 +916,6 @@ def login_deezer(email, password):
         browser.find_element(By.ID, 'password').send_keys(password)
         browser.find_element(By.XPATH, '//*[@id="__next"]/div/div[2]/div/form/div/button').click()
 
-        sleep(1)
         cookie = good()
         if cookie:
             return cookie
@@ -918,6 +934,7 @@ def login_deezer(email, password):
                 solve_audio_captcha(browser,model)
                 log_print('Captcha solved', F, True)
                 sleep(random_delay())
+                sleep(1)
                 cookie = good()
                 if cookie:
                     return cookie
@@ -952,7 +969,7 @@ def download_song_and_get_absolute_filename(song, downloaded_ids, download_path)
     #else:
     #print("Downloading '{}'".format(song_filename))
     if download_song(song, absolute_filename):
-        sng_titles.append(song_filename)
+        sng_titles.append(F"{song['ART_NAME']} - {song['SNG_TITLE']}")
         sng_ids.append(song['SNG_ID'])
 
 #soundcloud download
